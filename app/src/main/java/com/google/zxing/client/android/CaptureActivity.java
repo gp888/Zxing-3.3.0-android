@@ -34,6 +34,7 @@ import com.google.zxing.client.android.share.ShareActivity;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
@@ -53,6 +54,7 @@ import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.OrientationEventListener;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -115,6 +117,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
   private InactivityTimer inactivityTimer;
   private BeepManager beepManager;
   private AmbientLightManager ambientLightManager;
+  private MyOrientationDetector myOrientationDetector;
 
   ViewfinderView getViewfinderView() {
     return viewfinderView;
@@ -140,6 +143,9 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
     inactivityTimer = new InactivityTimer(this);
     beepManager = new BeepManager(this);
     ambientLightManager = new AmbientLightManager(this);
+
+    myOrientationDetector = new MyOrientationDetector(this);
+    myOrientationDetector.setLastOrientation(getWindowManager().getDefaultDisplay().getRotation());
 
     PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
   }
@@ -172,7 +178,8 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
     if (prefs.getBoolean(PreferencesActivity.KEY_DISABLE_AUTO_ORIENTATION, true)) {
       setRequestedOrientation(getCurrentOrientation());
     } else {
-      setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+      setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR); // 旋转
+      myOrientationDetector.enable(); //启用监听
     }
 
     resetStatusView();
@@ -300,6 +307,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
 
   @Override
   protected void onPause() {
+    myOrientationDetector.disable();
     if (handler != null) {
       handler.quitSynchronously();
       handler = null;
@@ -763,5 +771,47 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
 
   public void drawViewfinder() {
     viewfinderView.drawViewfinder();
+  }
+
+  private class MyOrientationDetector extends OrientationEventListener {
+
+    private int lastOrientation = -1;
+
+    MyOrientationDetector(Context context) {
+      super(context);
+    }
+
+    void setLastOrientation(int rotation) {
+      switch (rotation) {
+        case Surface.ROTATION_90:
+          lastOrientation = 270;
+          break;
+        case Surface.ROTATION_270:
+          lastOrientation = 90;
+          break;
+        default:
+          lastOrientation = -1;
+      }
+    }
+
+    @Override
+    public void onOrientationChanged(int orientation) {
+      Log.d(TAG, "orientation:" + orientation);
+      if (orientation > 45 && orientation < 135) {
+        orientation = 90;
+      } else if (orientation > 225 && orientation < 315) {
+        orientation = 270;
+      } else {
+        orientation = -1;
+      }
+      if ((orientation == 90  && lastOrientation == 270) || (orientation == 270  && lastOrientation == 90)) {
+        Log.i(TAG, "orientation:" + orientation + "lastOrientation:" + lastOrientation);
+        Intent intent = getIntent();
+        finish();
+        startActivity(intent);
+        lastOrientation = orientation;
+        Log.i(TAG, "SUCCESS");
+      }
+    }
   }
 }
