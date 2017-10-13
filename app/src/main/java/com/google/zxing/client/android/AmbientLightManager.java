@@ -17,14 +17,11 @@
 package com.google.zxing.client.android;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.preference.PreferenceManager;
 import com.google.zxing.client.android.camera.CameraManager;
-import com.google.zxing.client.android.camera.FrontLightMode;
 
 /**
  * Detects ambient light and switches on the front light when very dark, and off again when sufficiently light.
@@ -47,13 +44,10 @@ final class AmbientLightManager implements SensorEventListener {
 
   void start(CameraManager cameraManager) {
     this.cameraManager = cameraManager;
-    SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(context);
-    if (FrontLightMode.readPref(sharedPrefs) == FrontLightMode.AUTO) {
-      SensorManager sensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
-      lightSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
-      if (lightSensor != null) {
-        sensorManager.registerListener(this, lightSensor, SensorManager.SENSOR_DELAY_NORMAL);
-      }
+    SensorManager sensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
+    lightSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
+    if (lightSensor != null) {
+      sensorManager.registerListener(this, lightSensor, SensorManager.SENSOR_DELAY_NORMAL);
     }
   }
 
